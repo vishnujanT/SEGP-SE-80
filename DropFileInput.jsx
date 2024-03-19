@@ -27,12 +27,7 @@ const DropFileInput = props => {
         }
     }
 
-    const fileRemove = (file) => {
-        const updatedList = [...fileList];
-        updatedList.splice(fileList.indexOf(file), 1);
-        setFileList(updatedList);
-        props.onFileChange(updatedList);
-    }
+
 
     return (
         <>
