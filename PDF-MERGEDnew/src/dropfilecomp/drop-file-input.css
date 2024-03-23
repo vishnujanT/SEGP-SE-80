@@ -1,0 +1,117 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap");
+/* Other CSS rules follow */
+
+.drop-file-input {
+  position: relative;
+  width: 400px;
+  height: 200px;
+  border: 2px dashed var(--border-color);
+  border-radius: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: var(--input-bg);
+}
+
+.drop-file-input input {
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.drop-file-input:hover,
+.drop-file-input.dragover {
+  opacity: 0.6;
+}
+
+.drop-file-input__label {
+  text-align: center;
+  color: var(--txt-second-color);
+  font-weight: 600;
+  padding: 10px;
+}
+
+.drop-file-input__label img {
+  width: 90px;
+}
+
+.drop-file-preview {
+  margin-top: 140px;
+  margin-left: -400px;
+  width: 400px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+}
+.drop-file-preview__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Adjust the gap as needed */
+  padding: 10px; /* Add padding for better aesthetics */
+}
+.drop-file-preview p {
+  font-weight: 500;
+}
+
+.drop-file-preview__title {
+  margin-bottom: -30px;
+  margin-top: 35px;
+  font-size: 12px;
+}
+
+.drop-file-preview__item {
+  display: flex;
+  margin-bottom: 10px;
+  background-color: var(--input-bg);
+  padding: 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  height: 100px;
+}
+
+.drop-file-preview__item img {
+  width: 70px;
+  margin-right: 50px;
+  margin-top: 5px;
+}
+
+.drop-file-preview__item__info {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.drop-file-preview__item__del {
+  background-color: var(--box-bg);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+
+  position: absolute;
+  right: -100px;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: var(--box-shadow);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  margin-right: 50px;
+}
+
+.drop-file-preview__item:hover .drop-file-preview__item__del {
+  opacity: 1;
+}
+
+.box {
+  background-color: var(--box-bg);
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+}
+
