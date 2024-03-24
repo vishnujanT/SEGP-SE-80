@@ -5,7 +5,7 @@ import tempfile
 
 import fitz  # PyMuPDF
 import requests
-
+from easygoogletranslate import EasyGoogleTranslate
 from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 from transformers import MBart50TokenizerFast, MBartForConditionalGeneration
@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 CORS(app)
 
+translator = EasyGoogleTranslate(source_language="en", target_language="ta", timeout=10)
 
 model = MBartForConditionalGeneration.from_pretrained(
     "facebook/mbart-large-50-one-to-many-mmt"
@@ -106,38 +107,118 @@ def upload_file():
         summary = send_to_summarization_server(translated_text)
 
         # Encode the modified PDF data as base64
-        encoded_pdf_data = base64.b64encode(modified_pdf_data).decode("utf-8")
+        encoded_pdf_data = base64.b64encode(modified_pdf_data).decode('utf-8')
 
         # Return the translated PDF and summarized text to the client
-        return jsonify(
-            {"translated_pdf_data": encoded_pdf_data, "summarized_text": summary}
-        )
-
+        return jsonify({
+            "translated_pdf_data": encoded_pdf_data,
+            "summarized_text": summary
+        })
 
 def process_pdf(file_path):
     doc = fitz.open(file_path)
     translated_text = []
     for page in doc:
-        details = page.get_text("dict", flags=fitz.TEXTFLAGS_TEXT)  # skips images!
-        for block in details["blocks"]:  # delivers the block level
-            for line in block["lines"]:  # the lines in this block
-                bbox = fitz.Rect(line["bbox"])  # wraps this line
-                line_text = "".join([span["text"] for span in line["spans"]])
-                page.add_redact_annot(bbox)
+        text_blocks = page.get_text("words")
 
-                page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
+        min_gap = 5
+        min_x_gap = 67
 
-                result = english_to_tamil(line_text)
-                tamil_text = result
-                print(tamil_text)
-                translated_text.append(tamil_text)
+        # Process the blocks to separate them based on the minimum y_gap
+        separated_blocks = []
+        previous_block = None
+        lines = []
+        for block in text_blocks:
+            x0, y0, x1, y1, text, line_no, *_ = block
+            if previous_block:
+                (
+                    prev_x0,
+                    prev_y0,
+                    prev_x1,
+                    prev_y1,
+                    prev_text,
+                    prev_line_no,
+                    *_,
+                ) = previous_block
+                y_gap = y0 - prev_y1
+                x_gap = x0 - prev_x0
+                print(f"{prev_text}   {text}   {y_gap}  {x_gap}")
+                if y_gap > min_gap:
+                    separated_blocks.append(lines)
+                    lines = []
+                    lines.append(block)
+                    # print(f"y gap {block}")
+                elif x_gap > min_x_gap:
+                    separated_blocks.append(lines)
+                    lines = []
+                    lines.append(block)
+                    # print(f"x gap {block}")
+                else:
+                    lines.append(block)
+            else:
+                # This is the first block, so just add it to the list
+                lines.append(block)
+            previous_block = block
 
-                # Insert the Tamil text into the rectangle
-                page.insert_htmlbox(
-                    bbox,
-                    tamil_text,
-                    css="* {font-family: sans-serif; font-size:11px;}",
-                )
+        separated_blocks.append(lines)
+        # Now 'separated_blocks' contains blocks separated based on the minimum y_gap
+        for i in separated_blocks:
+            # Initialize the bounding box variables
+            min_x = float("inf")
+            min_y = float("inf")
+            max_x = float("-inf")
+            max_y = float("-inf")
+
+            # line = []
+            for p in i:
+                x0, y0, x1, y1, text, *_ = p
+                # line.append(text)
+                min_x = min(min_x, x0)
+                min_y = min(min_y, y0)
+                max_x = max(max_x, x1)
+                max_y = max(max_y, y1)
+
+            # full_text = " ".join(line)
+            # print(full_text)
+            # Create the bounding box
+            bounding_box = fitz.Rect(min_x, min_y, max_x, max_y)
+            page.add_redact_annot(bounding_box)
+
+            # print("----------------------------------")
+        page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
+
+        for i in separated_blocks:
+            # Initialize the bounding box variables
+            min_x = float("inf")
+            min_y = float("inf")
+            max_x = float("-inf")
+            max_y = float("-inf")
+
+            line = []
+            for p in i:
+                x0, y0, x1, y1, text, *_ = p
+                line.append(text)
+                min_x = min(min_x, x0)
+                min_y = min(min_y, y0)
+                max_x = max(max_x, x1)
+                max_y = max(max_y, y1)
+
+            full_text = " ".join(line)
+            print(full_text)
+            # Create the bounding box
+            bounding_box = fitz.Rect(min_x, min_y, max_x, max_y)
+
+            result = english_to_tamil(full_text)
+            tamil_text = result
+            print(tamil_text)
+            translated_text.append(tamil_text)
+
+            # Insert the Tamil text into the rectangle
+            page.insert_htmlbox(
+                bounding_box,
+                tamil_text,
+                css="* {font-family: sans-serif; font-size:11px;}",
+            )
 
     # Save the modified PDF
     doc.save("modified.pdf", garbage=4, deflate=True, linear=True)
