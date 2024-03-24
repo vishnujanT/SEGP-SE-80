@@ -23,3 +23,29 @@ def remove_watermark(pdf_path, output_path):
             cont[i1 : i2 + 1] = b""
         doc.update_stream(xref, cont)
     doc.save(output_path)
+
+@app.route("/remove-watermark", methods=["POST"])
+def remove_watermark_endpoint():
+    if "pdf" not in request.files:
+        return "No PDF file part", 400
+
+    file = request.files["pdf"]
+    if file.filename == "":
+        return "No selected file", 400
+
+    # Save the uploaded PDF to a temporary file
+    temp_pdf_path = os.path.join(os.getcwd(), "temp", "uploaded.pdf")
+    os.makedirs(os.path.dirname(temp_pdf_path), exist_ok=True)
+    file.save(temp_pdf_path)
+
+    # Define the output path for the modified PDF
+    output_path = os.path.join(os.getcwd(), "temp", "no_watermark.pdf")
+
+    # Process the PDF
+    remove_watermark(temp_pdf_path, output_path)
+
+    # Send the modified PDF back to the client
+    return send_file(output_path, as_attachment=True)
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=8001)
